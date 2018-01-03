@@ -1,0 +1,93 @@
+%PAGE R0
+%EEGA0 -
+%	EEGA0
+
+
+%PAGE R1
+%EEGA1 Ask for EEG file, create figures.
+%        EEGA1(file)
+       
+
+global file la S1
+if nargin==0,	% asking from keyboard
+  file=input('  Give file for eega: ','s');
+  if file==[],return,end
+else
+  file=i1;
+end            % using uigetfile
+if exist(file)==0,
+ [file p]=uigetfile(file,'Give file for eega: ');
+ if file==0,return,end;
+ file=[p file];
+end
+for i=1:2,     % creating analyses figures
+  creafig(2+i);
+  set(gcf,'name',file,'numbertitle','off');
+  h=uicsetup('eega.h1',2,'P%1.0f %s','b123b');
+  set(h(5),'string','Prn','callback','print');
+end           % create selection figure
+[x,y,la]=loadcnt(file,[],1,1);
+selelec(la,1);
+S1=selelec('',1:size(la,1));
+
+%PAGE R2
+%EEGA2 Load, plot raw data
+%       EEGA2
+
+global x y la ot file S1
+[x,y,la,el,ca,ot]=loadcnt(file,S1,1,1024);
+claa;
+plotdata(x,y,la,[50 50]);
+xlabel('t (s)');
+ylabel('division 100 uV');
+title(file);
+
+%PAGE R3
+%EEGA3 Plot spectrum, 1020
+%       EEGA3
+
+%	J.Virkkala 10-Oct-95 fftspect changed.
+
+global y la ot file
+claa;          % hanning window, 1/2 overlap
+w=(1-cos(2*pi*(1:128)/129))/2;
+[hz,p,a]=fftspect(y,eval(ot(5,:)),[],[128 10 0.5],w);
+pos1020(la,0,1,'.',1,10);
+[h rh]=axes1020(la);
+for i=1:length(h);
+  set(gcf,'currenta',h(i));
+  plot(hz,a(i,:));
+end             % axes for electrodes
+i=1:max(find(hz<50));
+set(rh(4),'visible','on');
+set([h rh(4)],'xlim',[0 50],'ylim',...
+  [0 sqrt(max(max(p(:,i)')))]);
+set(h,'xticklabels','','yticklabels','');
+set(gcf,'currentaxes',rh(4));
+xlabel('f (Hz)');
+ylabel('uV');   % one label
+
+%PAGE R4
+%EEGA4 Plot spectrum, table
+%       EEGA4
+
+global y la ot file
+claa;          % hanning window, 1/2 overlap
+w=(1-cos(2*pi*(1:128)/129))/2;
+[p,hz]=fftspect(y,[128 10 0.5 w],[],eval(ot(5,:)));
+for i=1:size(p,1);p(i,:)=p(i,:)-mean(p(i,:));end
+i=find(hz<50);
+plotdata(hz(i),sqrt(p(:,i)),la);
+xlabel('f (Hz)');
+ylabel('uV');   % one label
+
+%PAGE R5
+
+%PAGE R6
+
+%PAGE R7
+
+%PAGE R8
+
+%PAGE R9
+

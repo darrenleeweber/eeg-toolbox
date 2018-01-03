@@ -1,0 +1,178 @@
+%PAGE R0
+%SCANTUT0 Create tutorial text files.
+%	SCANTUT0 Following pages are ones to use:
+%	1) Create pages R7, R8, R9 for scanhead, scanelec and scaneven
+%	variables.
+%	2) Save those pages after your edit into corresponding
+%	datah\*.tex files and pages R3...R6 to headv, eventv, loadv
+%	and analv.tex and figure util1.eps and util2.eps
+%
+%EXAMPLES
+%	SCANTUT2;     % or as macro
+%	evalstr(R2);
+
+%	J.Virkkala  7-May-95 Added \tt{} for variables.
+%PAGE R1
+%SCANTUT1 Create pages R7, R8, R9.
+%	SCANTUT1
+%
+
+global R7 R8 R9
+showwait('loading all header var - %1.0f');
+[v,t]=scanhead([]);
+t=[blanks(size(t,1))' t];
+R7=tiestr(str2mat('\tt{','} & ',' \\'),v,t);
+showwait([]);
+
+showwait('loading all electrode var - %1.0f');
+[v,t]=scanelec([]);
+t=[blanks(size(t,1))' t];
+R8=tiestr(str2mat('\tt{','} & ',' \\'),v,t);
+showwait([]);
+
+showwait('loading all event var - %1.0f');
+[v,t]=scaneven([],[]);
+t=[blanks(size(t,1))' t];
+R9=tiestr(str2mat('\tt{','} & ',' \\'),v,t);
+showwait([]);
+%PAGE R2
+%SCANTUT2 Save text for tutorial document.
+%	SCANTUT2
+
+global R3 R4 R5 R6 R7 R7 R8 R9 DIRS
+
+savestr(R7,['datah' DIRS 'headt.tex']);
+savestr(R8,['datah' DIRS 'elect.tex']);
+savestr(R9,['datah' DIRS 'event.tex']);
+
+bv='\begin{verbatim}';
+ev='\end{verbatim}';
+savestr(str2mat(bv,R3,ev),['datah' DIRS 'headv.tex']);
+savestr(str2mat(bv,R4,ev),['datah' DIRS 'evenv.tex']);
+savestr(str2mat(bv,R5,ev),['datah' DIRS 'loadv.tex']);
+	% remove first row away
+savestr(str2mat(bv,R6(2:size(R6,1)-1,:),ev),['datah' DIRS 'analv.tex']);
+global x y la ot
+[x,y,la,el,ca,ot]=loadcnt('testec.cnt',[],1,1000);	
+evalstr(R6)
+setobj('keep')
+print datah\anal2 -deps
+close
+setobj('keep')
+print datah\anal1 -deps
+
+%PAGE R3
+[v,t,d]=scanhead(str2mat('date','time','nchan','rate'),...
+	'testp3.cnt');
+d =
+
+05/16/95
+11:44:56
+21
+250
+%PAGE R4
+[v,t,d]=scaneven([],2,'testp3.cnt');
+
+[t d] =
+
+range 0-65535                                 1
+0-11 corresponding to function keys+1         0
+response bad values/0xd=Accept, 0xc=Reject    0
+file offset of event                          63879
+data position (*)                             1462
+
+range 0-65535                                 1
+0-11 corresponding to function keys+1         0
+response bad values/oxd=Accept, Oxc=Reject    0
+file offset of event                          74337
+data position (*)                             1711
+
+%PAGE R5
+[x,y,la,el,ca,ot]=loadcnt('testec.cnt',[],1,1000);	
+
+ot =
+
+Version 3.0
+12/15/94
+08:58:56
+21
+250
+15749
+1310720
+0
+1
+%PAGE R6
+global x y la ot
+creafigs(1)
+plotdata(x,y,la,[50 50]);
+title('EEG from testec.cnt');
+xlabel('t (s)');
+ylabel('division 100 uV');
+
+creafigs(1)
+[hz,p,a]=fftspect(y,eval(ot(5,:)),[0 10 20 30],[128 10 0.5],...
+         hanning(128));
+pos1020(la,0,1,'.',1,10);
+[h rh]=axes1020(la);
+for i=1:size(la,1);
+  axes(h(i));plot(hz,a(i,:))
+end
+set([h rh(4)],'xlim',[0 30],'ylim',[0 30])
+set(h,'xticklabels',[],'yticklabels',[]);
+set(rh(4),'visible','on');
+axes(rh(4));xlabel('f (Hz)');ylabel('Amplitude (uV)');
+
+%PAGE R7
+\tt{rev} & Revision string \\                      
+\tt{type} & File type AVG=1, EEG=0 \\              
+\tt{id} & Patient ID \\                            
+\tt{oper} & Operator ID \\                         
+\tt{doctor} & Doctor ID \\                         
+\tt{referral} & Referral ID \\                     
+\tt{hospital} & Hospital ID \\                     
+\tt{patient} & Patient name \\                     
+\tt{age} & Patient Age \\                          
+\tt{sex} & Patient Sex Male='M', Female='F' \\     
+\tt{hand} & Handedness Mixed='M',Rt='R', lft='L' \\
+\tt{med} & Medications \\                          
+\tt{classif} & Classification \\                   
+\tt{state} & Patient wakefulness \\                
+\tt{label} & Session label \\                      
+\tt{date} & Session date string \\                 
+\tt{time} & Session time string \\                 
+\tt{compsweeps} & Number of actual sweeps \\       
+\tt{acceptcnt} & Number of accepted sweeps \\      
+\tt{rejectcnt} & Number of rejected sweeps \\      
+\tt{pnts} & Number of points per waveform \\       
+\tt{nchannels} & Number of active channels \\      
+\tt{variance} & Variance data included flag \\     
+\tt{rate} & D-to-A rate \\                         
+\tt{EventTablePos} & Position of event \\          
+\tt{ChannelOffset} & Block size, SYNAMPS \\        
+\tt{elect\_pos} & Electrode position (*) \\
+\tt{data\_pos} &  data position (*) \\
+\tt{TeegType} & Event table tag type \\            
+\tt{size} & Size of eventtable \\                  
+\tt{offset} & Relative file position \\            
+\tt{event\_pos} & Events position (*) \\
+\tt{datas} &  data size (*) \\                     
+%PAGE R8
+"ELECTRODE 1
+\tt{lab} & Electrode label - last byte contains NULL \\
+\tt{n} & observations at each electrode \\
+\tt{baseline} & baseline offset in raw ad units \\
+\tt{sensitivity} & channel sensitivity \\
+\tt{calib} & calibration coefficient \\
+%PAGE R9
+"EVENT 1
+\tt{StimType} & range 0-65535 \\
+\tt{KeyBoard} & 0-11 corresponding to function keys+1 \\
+\tt{KeyPad/Accept} & response bad values/0xd=Accept, 0xc=Reject \\
+\tt{Offset} & file offset of event \\
+\tt{position} & data position (*) \\
+\tt{StimType} & range 0-65535 \\
+\tt{Code} & - \\
+\tt{Latency} & - \\
+\tt{EpochEvent} & - \\
+\tt{KeyPad/Accept} & response bad values/0xd=Accept, 0xc=Reject \\
+\tt{Accuracy} & - \\

@@ -1,0 +1,9 @@
+qeega3.hl3 - qEEG
+
+-Dat appends data into Results subdirectory
+-Prn prints screen with reasonable resolution
+-New closes all figures and restarts qeega1
+-Cls closes the figure and lets you change selections
+
+jussi.virkkala@occuphealth.fi
+

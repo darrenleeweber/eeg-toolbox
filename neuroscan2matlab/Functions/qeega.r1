@@ -1,0 +1,334 @@
+%PAGE R0
+%QEEGA0 Quantitative EEG analysis, version a.             
+%	QEEGA Following Rx or QEEGAx depending if you use macro
+%	or converted m files:                                   
+%                                                         
+%	0) This help screen.							                             
+%	1) Ask file name, show data for selection.				          
+%	2) Show selected raw data, calculate FFT.		             
+%	3) Show FFT and derived parameters.			                  
+%	4) Create axes.						                                   
+%	5) Derive parameters. 					                             
+%       6) Create, analyze test signal.                   
+%                                                         
+%DIAGNOSTICS                                              
+%	Used global variabels are HDL, HDLS, A, P, P2, A2, PA, PAA.
+%                                                         
+%EXAMPLES                                                 
+%	QEEGA1('testec.cnt');                                   
+%	evalstr(R1,'testec.cnt');                               
+%	evalstr(R6);                                            
+                                                          
+% END OF R0                                               
+%PAGE R1
+%QEEGA1 Creating selection figure.	
+%	HDL=QEEGA1(NAME) Returns handle for axes.
+%
+%DIAGNOSTIC
+%	Used global variables HDL, NAME, S, and R.
+
+global HDL NAME S R
+	% what file
+HF=[];HDL=[];
+disp(' ');
+disp('  QEEGA Analysis, ver         : 2-Jun-95')
+if nargin==0,
+  name=input('  Give continuous file        : ','s');
+else
+  if i1==1,i1=NAME;end
+  disp(sprintf('  Continuous file is          : %s',i1));
+  name=i1;
+end
+if exist(name)~=2,
+  errorr('hff File not found from path','QEEGA');
+  showwait([]);return
+end
+uihelp('QEEGA.HL1')
+	% which channels for selection
+SELN=str2mat('FZ','EOG2','VEOG');
+	% loading parameters, data
+showwait('loading data - %1.0f')
+[x,y,el,ca,c1,o1]=loadcnt(name,SELN,1,1);
+S=eval(o1(6,:));
+R=eval(o1(5,:));
+disp(sprintf('  Creation date MM/DD/YY      : %s',o1(2,:)));
+disp(sprintf('  Creation time HH/MM/SS      : %s',o1(3,:)));
+
+if R~=250,
+  showwait([]);
+  errorr('hpw Rate was supposed to be 250 hz','QEEGA1');
+  return
+end
+	% analysis for short files
+if S>100000,
+  showwait([]);
+  errorr('hpw Filesize too large to continue','QEEGA1');
+  return
+end
+	% selection figure
+creafig([0 0.7 1 0.3],'name','QEEGA, range','numbertitle','off');
+[x,y,el,ca,c1,o1]=loadcnt(name,SELN,1,S);
+plotdata(x,y,el,[50 50],50);
+xlabel('t (s)')
+	% 10 s window
+uiscroll([],10,1);
+	% return axes handle
+HDL=getband(floor((S/R))-12:floor(S/R)-9,8);
+h=uicput('b12b/b12bb12bb12b',-20);
+set(h(1),'string','Cls','callback','close');
+	% in makem one evalstr in one row
+set(h(2),'string','Cal','callback',['global HDL;HDL=' o2s(HDL) ';'...
+	'evalstr(R2);'...
+	'evalstr(R3);'...
+]);
+set(h(3),'string','Hlp','callback','uihelp(''QEEGA.HL1'')');
+set(h(4),'string','Prn','callback','print');
+	% change print options
+set(gcf,'PaperP',[1 5 27 8],'PaperOr','lands');
+name=[name setstr(9) o1(2,:)];		
+set(gcf,'name',name);
+figtext(name);
+showwait('');
+o1=HDL;
+
+%PAGE R2
+%QEEGA2 Calculating spectrum and showing raw data.
+% 	QEEGA2(I1) If parameter given uses global y as input.
+%
+
+global HDL R S EL X0 H P2 A2 y
+name=get(get(HDL,'parent'),'name');
+file=name(1:find(name==setstr(9))-1);
+	% figure for data
+creafig([0 1 1 1],'name','QEEG1, raw data','numbertitle','off');
+set(gcf,'paperposition',[1 1 18 28]);
+h=uicsetup('QEEGA.HL2',1,'/b12b');
+set(h(3),'string','Prn','callback','print');
+	% what channels used
+elec=['T6';'O2';'T5';'O1';'C4';'P4';'C3';'P3';'F4';'C4';'F3';'C3'];
+	% reading from axes or test signal
+if nargin==0,
+  u=get(HDL,'userdata');
+  X0=u(:,1);
+else X0=[0 0 0 0]';end
+	% create derived labels
+EL=[];
+for j=1:2:11,
+    EL=putstr([elec(j,:) '-' elec(j+1,:) ' '],EL);
+end;
+el=EL;
+	% window and coefficent for 1/2 true amplitude
+w=hanning(1024);
+c=norm(w)/sum(w);
+%c=2*norm(w)/sum(w);
+	% FOR CORRECT PEAK 2* BUT NOW 1*
+
+%*** THROUGH 4 SECTIONS ***
+showwait('loading sections - %1.0f');
+P2=zeros(6,249);A2=zeros(6,249);
+for i=1:4,
+  x1=X0(i)*R;
+  if x1>S-2047,
+    errorr('hpw Selection to end of data.','QEEGA');
+    x1=S-2047-1;
+  end
+  x2=x1+2047;
+	% loading data or test signal
+  if nargin==0,
+       [x,y,pa]=loadcnt(file,elec,x1,x2);
+  else	% using global y, see R8 for testin
+       x=(0:2047)/250;
+  end
+  Y=[];
+  for j=1:2:11,
+    Y=[Y;y(j,:)-y(j+1,:)];
+  end;
+	% calculating spectrum
+  [H,P,A]=fftspect(Y(1:6,:),R,[0 61],[1024 3 0.5],w);
+  P=P*c^2;A=A*c;
+  P2=P2+P;
+  A2=A2+A;
+	% read eye movements or test signal
+  if nargin==0,
+    [x,y,pa]=loadcnt(file,['EOG2';'VEOG'],x1,x2);
+    Y=[Y;y];
+    el=str2mat(EL,[' ' deblank(pa(1,:))],[' ' deblank(pa(2,:))]);
+	% plotting data
+  end
+  a=axes;
+  set(a,'position',[0.15 0.24*i-.20 0.80 0.2]);
+  plotdata(x,Y,el,[25 25]);
+  if i==4,
+    ylabel('division 50 uV');
+  end
+  xlabel('t (s)');
+  drawnow;
+end
+P2=P2/4;A2=A2/4;
+	% end of all axes
+showwait('');
+figtext(name);
+
+%PAGE R3
+%QEEGA3 Plotting FFT and derived parameters.
+%	QEEGA3
+%
+%SEE ALSO
+%	Uses convtext.
+
+global X0 HDL EL H P2 A2 P A PA PAA R4 R5 th
+name=get(get(HDL,'parent'),'name');
+
+creafig([0 1 1 1],'name','QEEGA, FFT analysis','numbertitle','off');
+set(gcf,'paperposition',[1 1 18 28]);
+
+PAA=[];
+ax=evalstr(R4);
+for i=1:6,
+  axes(ax(i+1));
+  P=P2(i,:);
+  A=A2(i,:);
+	% calculation bands
+  evalstr(R5)
+  PAA=[PAA PA];
+  plot(H,P);
+  title(EL(i,:))
+	% plot each subplot
+  set(gca,'xlim',[0 20],'ylim',[0.01 200])
+  h=plotband([1.5 4.2 7.6 14.1 20],[],[0.01 100 0.3 0.2],':'...
+	,'%1.1f');
+  set(gca,'yscale','log');
+  set(h(find(h(:,1)~=0)),'color',[1 1 1]);
+  if i==1|i==4,
+     ylabel('uV^2');
+  end
+  if i>3,
+    xlabel('f (hz)');
+  else
+    set(gca,'xticklabels',[]);
+ end
+end
+	% plot numerical values
+s=size(PAA)+[1 0];
+PAA(s(1),s(2))=0;
+PAA(s(1),1:4)=X0';
+figtext(name);
+axes(ax(1));
+th=plottext('QEEGA.PLT',PAA);
+h=uicsetup('QEEGA.HL3',1,'/b12bb12b');
+com=['#1j<2|i==2#2''horizontala'',''left''#3#1j==3#2''position'','...
+     '[x+45 y]#3;'];com=strrep(com,'''','''''');
+set(h(3),'string','Prn','callback',['convtext(' o2s(th) ',''' com...
+	''');print;convtext(' o2s(th) ',-1);']);
+set(h(4),'string','Dat','callback',['showwait(''Appending data into DATAR,QEEGA.TXT'')'...
+	';global PAA NAME HDL;a=[];for i=1:2:11,a=[a;PAA(1:10,[i i+1]);PAA(15,[i'...
+	' i+1])];end;a=a'';a=a(:);row=[get(get(HDL,''par''),''name'')  sprintf('...
+	'''#%1.5f'',a)];row=strrep(row,''#'',setstr(9));'...
+	'savestr(row,''DATAR\QEEGA.txt'',''a'');pause(1);'...
+	'showwait([]);']);
+o1=th;
+% END OF R3
+%PAGE R4
+%QEEGA4 Creating axes.
+%	QEEGA4
+
+	% define axes
+h(1)=axes;
+set(h(1),'position',[0.03 0.47 0.97 0.50])
+h(5)=axes;
+set(h(5),'position',[0.07 0.07 0.26 0.14])
+h(6)=axes;
+set(h(6),'position',[0.40 0.07 0.26 0.14])
+h(7)=axes;
+set(h(7),'position',[0.73 0.07 0.26 0.14])
+h(2)=axes;
+set(h(2),'position',[0.07 0.27 0.26 0.14])
+h(3)=axes;
+set(h(3),'position',[0.40 0.27 0.26 0.14])
+h(4)=axes;
+set(h(4),'position',[0.73 0.27 0.26 0.14])
+o1=h;
+
+% END OF R4
+%PAGE R5
+%QEEGA5 Calculate bands, peaks and means.
+%	QEEGA5
+
+global H P A PA
+	% bands like in eeg4ana
+low= [ 6 17 31 58  83 123 201];
+high=[16 30 57 82 122 246 209];
+
+PA=[];	% delta, theta, alfa and beta
+for i=1:4,
+  PA=[PA;sum(A(low(i):high(i))) sum(P(low(i):high(i)))];
+end
+	% sum
+PA=[PA;sum(PA)];
+	% 20-30
+PA=[PA;sum(A(low(5):high(5))) sum(P(low(5):high(5)))];
+	% 30-60, 50 hz notch filter
+a=sum(A(low(6):high(6)))-sum(A(low(7):high(7)));
+p=sum(P(low(6):high(6)))-sum(P(low(7):high(7)));
+PA=[PA;a p];
+	% max theta-alfa
+a=A(low(2):high(3));
+p=P(low(2):high(3));
+h=H(low(2):high(3));
+i=find(a==max(a));
+j=find(p==max(p));
+PA=[PA;h(i(1)) h(j(1))];
+	% mean frequency in theta-alfa
+PA=[PA;sum(A(low(2):high(3)).*H(low(2):high(3)))...
+	/sum(A(low(2):high(3))) sum(P(low(2):high(3)).*H(low(2)...
+	:high(3)))/sum(P(low(2):high(3)))];
+	% mean frequency in delta-beta
+PA=[PA;sum(A(low(1):high(4)).*H(low(1):high(4)))...
+	/sum(A(low(1):high(4))) sum(P(low(1):high(4)).*H(low(1)...
+	:high(4)))/sum(P(low(1):high(4)))];
+	% alfa/theta
+PA=[PA;PA(3,:)./PA(2,:)];
+	% alfa/delta
+PA=[PA;PA(3,:)./PA(1,:)];
+	% alfa/(theta+delta)
+PA=[PA;PA(3,:)./(PA(1,:)+PA(2,:))];
+	% (alfa+beta)/(theta+delta)
+PA=[PA;(PA(3,:)+PA(4,:))./(PA(1,:)+PA(2,:))];
+
+% END OF R5
+%PAGE R6
+%QEEGA6 Create test signal analysis
+%	QEEGA6
+
+global HDL NAME R R2 R3 y
+
+R=250;
+NAME=['TEST 4,8,10&14,14&16,14,16' setstr(9) 'TEST'];
+creafig([0 0 0.1 0.1],'name',NAME);
+HDL=axes;
+t=(0:2047)/R;
+y=zeros(12,2048);
+
+y(1,:)= 10*sin(2*pi*4.*t);	% T6-O2
+y(3,:)= 10*sin(2*pi*8.*t);	% T5-O1
+				% C4-P4
+y(5,:)= 10*sin(2*pi*10.*t)+10*sin(2*pi*14.*t);
+				% C3-P3
+y(7,:)= 10*sin(2*pi*12.*t)+10*sin(2*pi*16.*t);	
+y(9,:)= 10*sin(2*pi*14.*t);	% F4-C4
+y(11,:)=10*sin(2*pi*16.*t);	% F3-C3	
+%y=y+randn(size(y));    % little noise
+ y=y+2*randn(size(y));  % more noise
+
+evalstr(R2,'1')	% so it is test signal
+evalstr(R3)
+
+% END OF R6
+
+
+%PAGE R7
+
+%PAGE R8
+
+%PAGE R9
+
